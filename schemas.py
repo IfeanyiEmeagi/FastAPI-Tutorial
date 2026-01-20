@@ -1,9 +1,9 @@
-from pydantic import BaseModel, Field, EmailStrConfigDict
+from pydantic import BaseModel, Field, EmailStr, ConfigDict
+from datetime import datetime
 
-
-class UserBase(BaseMoadel):
+class UserBase(BaseModel):
     email: EmailStr = Field(max_length=50)
-    username: str = Field(max_length=50)
+    username: str = Field(min_length=1,max_length=50)
 
 
 class UserCreate(UserBase):
@@ -22,14 +22,14 @@ class PostBase(BaseModel):
 
 
 class PostCreate(PostBase):
-    user_id: int
+    user_id: int         # Temporary - 
 
 class PostResponse(PostBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     user_id: int
-    post_date: str
+    date_posted: datetime
     author: UserResponse
 
     
