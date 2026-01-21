@@ -14,7 +14,14 @@ from sqlalchemy.orm import Session
 from database import Base, engine, get_db
 
 import models
-from schemas import PostResponse, PostCreate, UserCreate, UserResponse
+from schemas import (
+    PostResponse, 
+    PostCreate,
+    UserCreate, 
+    UserResponse,
+    PostUpdate,
+    UserUpdate
+)
 
 Base.metadata.create_all(bind=engine)
 
@@ -215,6 +222,45 @@ def get_post(post_id: int, db   : Annotated[Session, Depends(get_db)]):
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Post not found."
         )
+    return post
+
+
+@app.put(
+    "/api/post/{post_id}",
+    response_model=PostResponse,
+)
+def full_post_update(post_id: int,post_data: PostCreate, db: Annotated[Session, Depends(get_db)]):
+    # Check if the post exists
+    result = db.execute(
+        select(models.Post).where(models.Post.id == post_id),
+    )
+    post = result.scalar_one_or_none()
+    if not post:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Post not found."
+        )
+
+    # Check if the user is the original poster.
+    if post.user_id != post_data.user_id:
+        # Check if the user exists
+        result = db.execute(
+            select(models.User).where(models.User.id == post_data.user_id),
+        )
+        user = result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found."
+        )
+
+    # Update the post
+    post.title = post_data.title
+    post.content = post_data.content
+    post.user_id = post_data.user_id
+
+    db.commit()
+    db.refresh(post)
     return post
 
 
