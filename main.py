@@ -130,6 +130,76 @@ def create_user(user: UserCreate, db: Annotated[Session, Depends(get_db)]):
     return new_user
 
 
+@app.delete(
+    "/api/user/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT
+)
+def delete_user(user_id: int, db: Annotated[Session, Depends(get_db)]):
+    # Fetch the user frmom the db
+    result = db.execute(
+        select(models.User).where(models.User.id == user_id)
+    )
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found."
+        )
+    db.delete(user)
+    db.commit()
+    
+
+# Update user
+@app.patch(
+    "/api/user/{user_id}",
+    response_model=UserResponse,
+    status_code=status.HTTP_200_OK
+)
+def update_user(user_id: int, user_data: UserUpdate, db: Annotated[Session, Depends(get_db)]):
+    
+    # Fetch the user frmom the db
+    result = db.execute(
+        select(models.User).where(models.User.id == user_id)
+    )
+    user = result.scalars().first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found."
+        )
+
+    # Check if the new username or email already exists
+    
+    if user_data.username is not None and user_data.username != user.username:
+        result = db.execute(
+            select(models.User).where(models.User.username == user_data.username)
+        )
+        if result.scalars().first():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"User with username: {user_data.username} already exists."
+            )
+
+    if user_data.email is not None and user_data.email != user.email:
+        result = db.execute(
+            select(models.User).where(models.User.email == user_data.email)
+        )
+        if result.scalars().first():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"User with email: {user_data.email} already exists."
+            )
+
+    # Update the user
+    new_user_data = user_data.model_dump(exclude_unset=True)
+    for field, value in new_user_data.items():
+        setattr(user, field, value)
+
+    db.commit()
+    db.refresh(user)
+    return user
+
+
 @app.get(
     "/api/user/{user_id}",
     response_model=UserResponse,
@@ -289,7 +359,7 @@ def partial_post_update(post_id: int, post_data: PostUpdate, db: Annotated[Sessi
     db.refresh(post)
     return post
 
-
+# Delete post
 @app.delete(
     "/api/posts/{post_id}",
     status_code=status.HTTP_204_NO_CONTENT

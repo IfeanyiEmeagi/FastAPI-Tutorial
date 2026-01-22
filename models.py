@@ -13,7 +13,10 @@ class User(Base):
     username: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     image_file: Mapped[str | None] = mapped_column(String, nullable=True, default=None)
     
-    posts: Mapped[list[Post]] = relationship(back_populates="author") # One to many relationship
+    posts: Mapped[list[Post]] = relationship(
+        back_populates="author",
+        cascade="all, delete-orphan"  # Cascade delete posts when user is deleted
+    ) # One to many relationship
 
     @property
     def image_path(self) -> str:
