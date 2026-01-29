@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from  fastapi  import APIRouter, status, Depends
+from fastapi import APIRouter, status, Depends, HTTPException
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -14,15 +14,19 @@ router = APIRouter()
 # Get all posts
 @router.get("/posts", response_model=list[PostResponse], status_code=status.HTTP_200_OK)
 async def get_posts(db: Annotated[AsyncSession, Depends(get_db)]):
-    result = await db.execute(select(models.Post).options(selectinload(models.Post.author)))
+    result = await db.execute(
+        select(models.Post) 
+        .options(selectinload(models.Post.author))
+        .order_by(models.Post.date_posted.desc())
+    )
     posts = result.scalars().all()
     return posts
 
 @router.post("", response_model=PostResponse, status_code=status.HTTP_201_CREATED)
-async def create_post(post: PostCreate, user_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
+async def create_post(post: PostCreate, db: Annotated[AsyncSession, Depends(get_db)]):
     # Check if the user exists
     result = await  db.execute(
-        select(models.User).where(models.User.id == user_id),
+        select(models.User).where(models.User.id == post.user_id),
     )
     user = result.scalar_one_or_none()
     if not user:
@@ -34,7 +38,7 @@ async def create_post(post: PostCreate, user_id: int, db: Annotated[AsyncSession
     new_post = models.Post(
         title = post.title,
         content = post.content,
-        user_id = user_id,
+        user_id = post.user_id,
     )
     db.add(new_post)
     await db.commit()
