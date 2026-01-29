@@ -11,3 +11,13 @@ wheels/
 
 # python version
 .python-version
+
+# Environment Variables
+.env
+
+## MAC USER
+.DS_Store
+
+# Database files
+*.sqlite3
+*.db
